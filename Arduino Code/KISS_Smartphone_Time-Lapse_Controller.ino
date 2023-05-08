@@ -19,7 +19,7 @@
  **************************************************************************/
 
 #define PROGRAM "KISS Time-Lapse Camera Controller"
-#define VERSION "Ver 0.9 2023-03-09"
+#define VERSION "Ver 0.9 2023-03-22"
 
 #define DEBUG_OUTPUT  1
 
@@ -36,7 +36,7 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 // EEPROM.read(address);
 
 // EEPROM state variables
-#define EEPROM_SIZE 20
+#define EEPROM_SIZE 40
 #define EEPROM_SIGNATURE                    0 // 000-003  Signature 'KISS'
 #define EEPROM_NUMBER_OF_LOOPS              4 // 004-005  iNumberOfLoops
 #define EEPROM_TIME_DELAY_MINUTES           6 // 006-007  iTimeDelayMinutes
@@ -44,6 +44,7 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define EEPROM_LIGHT_DELAY_BEFORE_SECONDS  10 // 010-011  iLightDelayBeforeSeconds
 #define EEPROM_LIGHT_DELAY_AFTER_SECONDS   12 // 012-013  iLightDelayAfterSeconds
 #define EEPROM_CAMERA_ID                   14 // 014-015  cCameraID
+#define EEPROM_ACTIVE_HOURS                16 // 016-040  bActiveHours
 
 #define LIGHT_CONTROL_PIN 4
 
@@ -119,6 +120,11 @@ static long lVideoRecordMilliseconds = 0;
 static int iLightDelayBeforeSeconds = LIGHT_DELAY_BEFORE_SECONDS;
 static int iLightDelayAfterSeconds = LIGHT_DELAY_AFTER_SECONDS;
 static char cCameraID[3] = {'0','1','\0'};   // 01
+static byte bActiveHours[24] = {1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1
+                               };
 
 char sKeyboardName[] = "KISS 00 Time-Lapse BLE Kybd";
 //                      0123456
@@ -127,6 +133,8 @@ static long lTimeMillisecondsPhoto = 0L;
 static long lTimeMillisecondsVideo = 0L;
 
 static bool bUseNTP = true;
+struct tm timeinfo;
+
 
 // Auxiliar variables to store the current output state
 int bRecordingVideo = false;
@@ -135,7 +143,7 @@ static bool bReady = true;
 
 static char sTimeBuffer[80] = "";
 
-static char index_html[3072] = "";
+static char index_html[6144] = "";
 
 // HTML web page
 
@@ -175,14 +183,17 @@ const char index_html_statusupdatefinished[] PROGMEM = R"rawliteral(
 </body></html>
 )rawliteral";
 
-const char index_html_settingspostamble[] PROGMEM = R"rawliteral(
+const char index_html_settingspreamble[] PROGMEM = R"rawliteral(
 <form action="/GET">
 <center>
 <table style="border-collapse: collapse;">
+)rawliteral";
+
+/*
   <tr>
     <td style="text-align: left;"><label>Time Delay Minutes:</label></td>
     <td style="text-align: left;"><input type="text" id="TIMEDELAYMINUTES"
-maxlength="3" size="3" name="TIMEDELAYMINUTES"></td>
+maxlength="3" size="3" name="TIMEDELAYMINUTES" value="6"></td>
   </tr>
   <tr>
     <td style="text-align: left;"><label>Number of Loops:</label></td>
@@ -199,17 +210,64 @@ maxlength="3" size="3" name="VIDEORECORDSECONDS"></td>
     <td style="text-align: left;"><input type="text" id="LIGHTDELAYBEFORESECONDS"
 maxlength="3" size="3" name="LIGHTDELAYBEFORESECONDS"></td>
   </tr>
-  <tr>
-    <td style="text-align: left;"><label>Light Delay After Seconds:</label></td>
-    <td style="text-align: left;"><input type="text" id="LIGHTDELAYAFTERSECONDS"
-maxlength="3" size="3" name="LIGHTDELAYAFTERSECONDS"></td>
-  </tr>
+*/
+  
+const char index_html_settingspostamble[] PROGMEM = R"rawliteral(
   <tr>
     <td style="text-align: left;"><label>Camera ID:</label></td>
     <td style="text-align: left;"><input type="text" id="CAMERAID"
 maxlength="3" size="3" name="CAMERAID"></td>
   </tr>
 </table>
+)rawliteral";
+
+#if 0
+const char index_html_settingscheckboxes[] PROGMEM = R"rawliteral(
+Active Hours
+    <table>
+      <tbody>
+        <tr>
+      <td>00 to 05</td>
+          <td><input type="checkbox" name="checkbox1" checked></td>
+          <td><input type="checkbox" name="checkbox2" checked></td>
+          <td><input type="checkbox" name="checkbox3" checked></td>
+          <td><input type="checkbox" name="checkbox4" checked></td>
+          <td><input type="checkbox" name="checkbox5" checked></td>
+          <td><input type="checkbox" name="checkbox6" checked></td>
+        </tr>
+        <tr>
+      <td>06 to 11</td>
+          <td><input type="checkbox" name="checkbox7" checked></td>
+          <td><input type="checkbox" name="checkbox8" checked></td>
+          <td><input type="checkbox" name="checkbox9" checked></td>
+          <td><input type="checkbox" name="checkbox10" checked></td>
+          <td><input type="checkbox" name="checkbox11" checked></td>
+          <td><input type="checkbox" name="checkbox12" checked></td>
+        </tr>
+        <tr>
+      <td>12 to 17</td>
+          <td><input type="checkbox" name="checkbox13" checked></td>
+          <td><input type="checkbox" name="checkbox14" checked></td>
+          <td><input type="checkbox" name="checkbox15" checked></td>
+          <td><input type="checkbox" name="checkbox16" checked></td>
+          <td><input type="checkbox" name="checkbox17" checked></td>
+          <td><input type="checkbox" name="checkbox18" checked></td>
+        </tr>
+        <tr>
+      <td>18 to 23</td>
+          <td><input type="checkbox" name="checkbox19" checked></td>
+          <td><input type="checkbox" name="checkbox20" checked></td>
+          <td><input type="checkbox" name="checkbox21" checked></td>
+          <td><input type="checkbox" name="checkbox22" checked></td>
+          <td><input type="checkbox" name="checkbox23" checked></td>
+          <td><input type="checkbox" name="checkbox24" checked></td>
+        </tr>
+      </tbody>
+    </table>
+)rawliteral";
+#endif
+
+const char index_html_settingsupdate[] PROGMEM = R"rawliteral(
 </center>
 <input type="submit" value="UPDATE">
 </form>
@@ -217,6 +275,7 @@ maxlength="3" size="3" name="CAMERAID"></td>
 <p><a href="/REBOOT"><button class="button button2">REBOOT</button></a></p>
 </body></html>
 )rawliteral";
+
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
@@ -232,6 +291,44 @@ void DoH1(char *sTitle)
   strcat(index_html, sTitle);
   strcat(index_html, "</h1>");
 }
+
+void doSettingsValue(char *sDescription, char *sID, int iCurrentValue)
+{
+  strcat(index_html, "<tr><td style=\"text-align: left;\"><label>");
+  strcat(index_html, sDescription);
+  strcat(index_html, "</label></td><td style=\"text-align: left;\"><input type=\"text\" id=\"");
+  strcat(index_html, sID);
+  strcat(index_html, "\"maxlength=\"3\" size=\"3\" name=\"");
+  strcat(index_html, sID);
+  strcat(index_html, "\" value=\"");
+  char sParam[10] = "";
+  itoa(iCurrentValue,sParam,10);
+  strcat(index_html, sParam);
+  strcat(index_html, "\"></td></tr>");
+}
+
+void doCheckBoxes()
+{
+  strcat(index_html, "Active Photo Hours\r\n<table><tbody>\r\n");
+  for (int iHour=1; iHour<25; iHour=iHour+6)
+  {
+    char sParam[128];
+    sprintf(sParam, "<tr><td>%02d to %02d</td>\r\n", iHour-1, iHour+4);
+    strcat(index_html, sParam);
+    for (int i=0; i<6; i++)
+    {
+      // <td><input type="checkbox" name="checkbox1" checked></td>
+      sprintf(sParam, "<td><input type=\"checkbox\" name=\"checkbox%d\" ", iHour+i);      
+      strcat(index_html, sParam);
+      if (bActiveHours[(iHour-1)+i])
+        strcat(index_html, "checked");
+      strcat(index_html, "></td>\r\n");
+    }
+    strcat(index_html, "</tr>\r\n");    
+  }
+  strcat(index_html, "</tbody></table>\r\n");
+}
+
 
 void SendOpToLoop(AsyncWebServerRequest *request, int iOp, char *index_html)
 {
@@ -471,8 +568,18 @@ Serial.println("SETTINGS");
 #endif
     strcpy(index_html, index_html_preamble);
     DoH1("SETTINGS");
-    ShowSettings();
+    //ShowSettings();
+    strcat(index_html, index_html_settingspreamble);
+
+    doSettingsValue("Time Delay Minutes:", "TIMEDELAYMINUTES", iTimeDelayMinutes);
+    doSettingsValue("Number of Loops:", "NUMBEROFLOOPS", iNumberOfLoops);
+    doSettingsValue("Video Record Seconds:", "VIDEORECORDSECONDS", iVideoRecordSeconds);
+    doSettingsValue("Light Delay Before Seconds:", "LIGHTDELAYBEFORESECONDS", iLightDelayBeforeSeconds);
+    doSettingsValue("Light Delay After Seconds:", "LIGHTDELAYAFTERSECONDS", iLightDelayAfterSeconds);
+    
     strcat(index_html, index_html_settingspostamble);
+    doCheckBoxes();
+    strcat(index_html, index_html_settingsupdate);
     SendOpToLoop(request, OP_SETTINGS, (char *) index_html);
   });
  
@@ -568,6 +675,21 @@ Serial.println("/GET");
       }
     }
     
+    for (int i=1; i<25; i++)
+    {
+      char sParam[20];
+      String stringOn = "on";
+      sprintf(sParam, "checkbox%d", i);
+      if (request->hasParam(sParam))
+      {
+        bActiveHours[i-1] = true;
+      }
+      else
+      {
+        bActiveHours[i-1] = false;
+      }
+    }
+    
     SetupEEPROM();
 
     Format_index_html(false);
@@ -611,6 +733,10 @@ void setup()
     }
     sKeyboardName[5] = cCameraID[0];
     sKeyboardName[6] = cCameraID[1];
+    for (int i=0; i<24; i++)
+    {
+      bActiveHours[i] = EEPROM.read(EEPROM_ACTIVE_HOURS+i);
+    }
   }
   else
   {
@@ -701,7 +827,7 @@ void loop()
     if (millis() > (lTimeMillisecondsPhoto + (1000L * 60L * (long) iTimeDelayMinutes)))
     {
       if (iTimeLapse == PHOTO_TIMELAPSE)
-        TakePhotoWithLightControl();
+        TakePhotoWithLightControl(true);
       else
         StartVideoWithLightControl();
         
@@ -727,7 +853,7 @@ void loop()
 #if DEBUG_OUTPUT
 Serial.println("OP_PHOTO");
 #endif
-        TakePhotoWithLightControl();
+        TakePhotoWithLightControl(false);
         bRecordingVideo = false;
         break;
 
@@ -755,7 +881,7 @@ Serial.println("OP_STOPVIDEO");
 #if DEBUG_OUTPUT
 Serial.println("OP_STARTPHOTOTIMELAPSE");
 #endif
-        TakePhotoWithLightControl();
+        TakePhotoWithLightControl(true);
         if (iNumberOfLoops > 1)          
         {
           iTimeLapse = PHOTO_TIMELAPSE;
@@ -840,7 +966,6 @@ void printLocalTime()
     return;
   }
 
-  struct tm timeinfo;
   if(!getLocalTime(&timeinfo))
   {
     bUseNTP = false;
@@ -855,8 +980,31 @@ void printLocalTime()
 #endif   
 }
 
-void TakePhotoWithLightControl()
+void TakePhotoWithLightControl(bool bCheckActiveHours)
 {
+  if (bCheckActiveHours)
+  {
+//////////////////
+Serial.print("bUseNTP=");
+Serial.println(bUseNTP);
+Serial.print("getLocalTime(&timeinfo)=");
+Serial.println(getLocalTime(&timeinfo));        
+Serial.print("timeinfo.tm_hour=");
+Serial.println(timeinfo.tm_hour);        
+Serial.print("bActiveHours[timeinfo.tm_hour]=");
+Serial.println(bActiveHours[timeinfo.tm_hour]);
+        if (bUseNTP == true &&
+            getLocalTime(&timeinfo) == true &&
+            bActiveHours[timeinfo.tm_hour] == false)
+{
+#if DEBUG_OUTPUT
+Serial.println("PHOTO NOT TAKEN, NOT ACTIVE HOUR");
+#endif
+          return;
+        }
+//////////////////    
+  }
+  
 #if DEBUG_OUTPUT
 Serial.println("TAKE PHOTO");
 #endif
@@ -923,6 +1071,10 @@ void SetupEEPROM()
   writeUnsignedIntIntoEEPROM(EEPROM_LIGHT_DELAY_AFTER_SECONDS, iLightDelayAfterSeconds); 
   EEPROM.write(EEPROM_CAMERA_ID+0, cCameraID[0]);
   EEPROM.write(EEPROM_CAMERA_ID+1, cCameraID[1]);
+  for (int i=0; i<24; i++)
+  {
+    EEPROM.write(EEPROM_ACTIVE_HOURS+i, bActiveHours[i]);
+  }
   EEPROM.commit();    
 
 #if DEBUG_OUTPUT
