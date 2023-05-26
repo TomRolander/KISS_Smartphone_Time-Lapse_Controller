@@ -19,7 +19,7 @@
  **************************************************************************/
 
 #define PROGRAM "KISS Time-Lapse Camera Controller"
-#define VERSION "Ver 0.9 2023-03-22"
+#define VERSION "Ver 0.9 2023-05-26"
 
 #define DEBUG_OUTPUT  1
 
@@ -39,7 +39,7 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define EEPROM_SIZE 40
 #define EEPROM_SIGNATURE                    0 // 000-003  Signature 'KISS'
 #define EEPROM_NUMBER_OF_LOOPS              4 // 004-005  iNumberOfLoops
-#define EEPROM_TIME_DELAY_MINUTES           6 // 006-007  iTimeDelayMinutes
+#define EEPROM_TIME_DELAY_SECONDS           6 // 006-007  iTimeDelaySeconds
 #define EEPROM_VIDEO_RECORD_SECONDS         8 // 008-009  iVideoRecordSeconds
 #define EEPROM_LIGHT_DELAY_BEFORE_SECONDS  10 // 010-011  iLightDelayBeforeSeconds
 #define EEPROM_LIGHT_DELAY_AFTER_SECONDS   12 // 012-013  iLightDelayAfterSeconds
@@ -49,10 +49,10 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define LIGHT_CONTROL_PIN 4
 
 #define NUMBER_OF_LOOPS             2
-#define TIME_DELAY_MINUTES          1
+#define TIME_DELAY_SECONDS          60
 #define VIDEO_RECORD_SECONDS        60
-#define LIGHT_DELAY_BEFORE_SECONDS  5
-#define LIGHT_DELAY_AFTER_SECONDS   2
+#define LIGHT_DELAY_BEFORE_SECONDS  0
+#define LIGHT_DELAY_AFTER_SECONDS   0
 
 #define MAX_OPERATIONS          10
 #define OP_PHOTO                1
@@ -66,7 +66,7 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define OP_REBOOT               9
 #define OP_STATUSUPDATE        10
 
-#define TIMEDELAYMINUTES        "TIMEDELAYMINUTES"
+#define TIMEDELAYSECONDS        "TIMEDELAYSECONDS"
 #define NUMBEROFLOOPS           "NUMBEROFLOOPS"
 #define VIDEORECORDSECONDS      "VIDEORECORDSECONDS"
 #define LIGHTDELAYBEFORESECONDS "LIGHTDELAYBEFORESECONDS"
@@ -112,7 +112,7 @@ static int iStatusUpdateState = STATUSUPDATE_INITIAL;
 static int iTimeLapse = NO_TIMELAPSE;
 static bool bTimeLapseFinished = false;
 
-static int iTimeDelayMinutes = TIME_DELAY_MINUTES;
+static int iTimeDelaySeconds = TIME_DELAY_SECONDS;
 static int iNumberOfLoops = NUMBER_OF_LOOPS;
 static int iLoopCounter = 1;
 static int iVideoRecordSeconds = VIDEO_RECORD_SECONDS;
@@ -191,9 +191,9 @@ const char index_html_settingspreamble[] PROGMEM = R"rawliteral(
 
 /*
   <tr>
-    <td style="text-align: left;"><label>Time Delay Minutes:</label></td>
-    <td style="text-align: left;"><input type="text" id="TIMEDELAYMINUTES"
-maxlength="3" size="3" name="TIMEDELAYMINUTES" value="6"></td>
+    <td style="text-align: left;"><label>Time Delay Seconds:</label></td>
+    <td style="text-align: left;"><input type="text" id="TIMEDELAYSECONDS"
+maxlength="3" size="3" name="TIMEDELAYSECONDS" value="6"></td>
   </tr>
   <tr>
     <td style="text-align: left;"><label>Number of Loops:</label></td>
@@ -298,7 +298,7 @@ void doSettingsValue(char *sDescription, char *sID, int iCurrentValue)
   strcat(index_html, sDescription);
   strcat(index_html, "</label></td><td style=\"text-align: left;\"><input type=\"text\" id=\"");
   strcat(index_html, sID);
-  strcat(index_html, "\"maxlength=\"3\" size=\"3\" name=\"");
+  strcat(index_html, "\"maxlength=\"4\" size=\"4\" name=\"");
   strcat(index_html, sID);
   strcat(index_html, "\" value=\"");
   char sParam[10] = "";
@@ -366,8 +366,8 @@ void Format_index_html(bool bRoot)
     strcat(index_html, sTimeBuffer);
   
   strcat(index_html, "<p>");  
-  strcat(index_html, "Time Delay Minutes = ");
-  itoa(iTimeDelayMinutes,sParam,10);
+  strcat(index_html, "Time Delay Seconds = ");
+  itoa(iTimeDelaySeconds,sParam,10);
   strcat(index_html, sParam);
   strcat(index_html, "<br>");
   strcat(index_html, "Number of Loops = ");
@@ -395,8 +395,8 @@ void ShowSettings()
 {
   char sParam[10] = "";
 
-  strcat(index_html, "Time Delay Minutes = ");
-  itoa(iTimeDelayMinutes,sParam,10);
+  strcat(index_html, "Time Delay Seconds = ");
+  itoa(iTimeDelaySeconds,sParam,10);
   strcat(index_html, sParam);
   strcat(index_html, "<br>");
   strcat(index_html, "Number of Loops = ");
@@ -571,7 +571,7 @@ Serial.println("SETTINGS");
     //ShowSettings();
     strcat(index_html, index_html_settingspreamble);
 
-    doSettingsValue("Time Delay Minutes:", "TIMEDELAYMINUTES", iTimeDelayMinutes);
+    doSettingsValue("Time Delay Seconds:", "TIMEDELAYSECONDS", iTimeDelaySeconds);
     doSettingsValue("Number of Loops:", "NUMBEROFLOOPS", iNumberOfLoops);
     doSettingsValue("Video Record Seconds:", "VIDEORECORDSECONDS", iVideoRecordSeconds);
     doSettingsValue("Light Delay Before Seconds:", "LIGHTDELAYBEFORESECONDS", iLightDelayBeforeSeconds);
@@ -608,13 +608,13 @@ Serial.println("REBOOT");
 #if DEBUG_OUTPUT
 Serial.println("/GET");        
 #endif
-    if (request->hasParam(TIMEDELAYMINUTES)) {
-      inputMessage = request->getParam(TIMEDELAYMINUTES)->value();
+    if (request->hasParam(TIMEDELAYSECONDS)) {
+      inputMessage = request->getParam(TIMEDELAYSECONDS)->value();
       if (inputMessage.length() > 0)
       {
-        iTimeDelayMinutes = inputMessage.toInt();
-        if (iTimeDelayMinutes < 1)
-          iTimeDelayMinutes = 1;
+        iTimeDelaySeconds = inputMessage.toInt();
+        if (iTimeDelaySeconds < 1)
+          iTimeDelaySeconds = 1;
       }
     }
     
@@ -623,8 +623,8 @@ Serial.println("/GET");
       if (inputMessage.length() > 0)
       {
         iNumberOfLoops = inputMessage.toInt();
-        if (iNumberOfLoops < 2)
-          iNumberOfLoops = 2;
+        //if (iNumberOfLoops < 2)
+        //  iNumberOfLoops = 2;
       }
     }
     
@@ -644,8 +644,8 @@ Serial.println("/GET");
       if (inputMessage.length() > 0)
       {
         iLightDelayBeforeSeconds = inputMessage.toInt();
-        if (iLightDelayBeforeSeconds < 1)
-          iLightDelayBeforeSeconds = 1;
+        //if (iLightDelayBeforeSeconds < 1)
+        //  iLightDelayBeforeSeconds = 1;
       }
     }
     
@@ -654,8 +654,8 @@ Serial.println("/GET");
       if (inputMessage.length() > 0)
       {
         iLightDelayAfterSeconds = inputMessage.toInt();
-        if (iLightDelayAfterSeconds < 1)
-          iLightDelayAfterSeconds = 1;
+        //if (iLightDelayAfterSeconds < 1)
+        //  iLightDelayAfterSeconds = 1;
       }
     }
 
@@ -718,7 +718,7 @@ void setup()
       EEPROM.read(EEPROM_SIGNATURE+3) == 'S')
   {
     iNumberOfLoops = readUnsignedIntFromEEPROM(EEPROM_NUMBER_OF_LOOPS);
-    iTimeDelayMinutes = readUnsignedIntFromEEPROM(EEPROM_TIME_DELAY_MINUTES);
+    iTimeDelaySeconds = readUnsignedIntFromEEPROM(EEPROM_TIME_DELAY_SECONDS);
     iVideoRecordSeconds = readUnsignedIntFromEEPROM(EEPROM_VIDEO_RECORD_SECONDS);
     lVideoRecordMilliseconds = 1000L * (long) iVideoRecordSeconds;
     iLightDelayBeforeSeconds = readUnsignedIntFromEEPROM(EEPROM_LIGHT_DELAY_BEFORE_SECONDS);
@@ -747,8 +747,8 @@ Serial.println("EEPROM KISS not found");
   }
 #if DEBUG_OUTPUT
 Serial.println("EEPROM KISS found");
-Serial.print("iTimeDelayMinutes = ");
-Serial.println(iTimeDelayMinutes);
+Serial.print("iTimeDelaySeconds = ");
+Serial.println(iTimeDelaySeconds);
 Serial.print("iNumberOfLoops = ");
 Serial.println(iNumberOfLoops);
 Serial.print("iVideoRecordSeconds = ");
@@ -817,14 +817,15 @@ void loop()
       if (millis() > (lTimeMillisecondsVideo + lVideoRecordMilliseconds))
       {
         StopVideoWithLightControl();
-        if (iLoopCounter >= iNumberOfLoops)
+        if (iNumberOfLoops != 0 &&
+            iLoopCounter >= iNumberOfLoops)
         {
           bTimeLapseFinished = true;
         }
       }       
     }
     
-    if (millis() > (lTimeMillisecondsPhoto + (1000L * 60L * (long) iTimeDelayMinutes)))
+    if (millis() > (lTimeMillisecondsPhoto + (1000L * (long) iTimeDelaySeconds)))
     {
       if (iTimeLapse == PHOTO_TIMELAPSE)
         TakePhotoWithLightControl(true);
@@ -833,7 +834,8 @@ void loop()
         
       iLoopCounter++;
       lTimeMillisecondsPhoto = millis();
-      if (iLoopCounter >= iNumberOfLoops &&
+      if (iNumberOfLoops != 0 &&
+          iLoopCounter >= iNumberOfLoops &&
           iTimeLapse == PHOTO_TIMELAPSE)
       {
         bTimeLapseFinished = true;
@@ -882,7 +884,7 @@ Serial.println("OP_STOPVIDEO");
 Serial.println("OP_STARTPHOTOTIMELAPSE");
 #endif
         TakePhotoWithLightControl(true);
-        if (iNumberOfLoops > 1)          
+        //if (iNumberOfLoops > 1)          
         {
           iTimeLapse = PHOTO_TIMELAPSE;
           lTimeMillisecondsPhoto = millis();
@@ -895,7 +897,7 @@ Serial.println("OP_STARTPHOTOTIMELAPSE");
 Serial.println("OP_STARTVIDEOTIMELAPSE");
 #endif
         StartVideoWithLightControl();
-        if (iNumberOfLoops > 1)          
+        //if (iNumberOfLoops > 1)          
         {
           iTimeLapse = VIDEO_TIMELAPSE;
           lTimeMillisecondsPhoto = millis();
@@ -1065,7 +1067,7 @@ void SetupEEPROM()
   EEPROM.write(EEPROM_SIGNATURE+2, 'S');
   EEPROM.write(EEPROM_SIGNATURE+3, 'S');
   writeUnsignedIntIntoEEPROM(EEPROM_NUMBER_OF_LOOPS, iNumberOfLoops);
-  writeUnsignedIntIntoEEPROM(EEPROM_TIME_DELAY_MINUTES, iTimeDelayMinutes);
+  writeUnsignedIntIntoEEPROM(EEPROM_TIME_DELAY_SECONDS, iTimeDelaySeconds);
   writeUnsignedIntIntoEEPROM(EEPROM_VIDEO_RECORD_SECONDS, iVideoRecordSeconds);
   writeUnsignedIntIntoEEPROM(EEPROM_LIGHT_DELAY_BEFORE_SECONDS, iLightDelayBeforeSeconds);
   writeUnsignedIntIntoEEPROM(EEPROM_LIGHT_DELAY_AFTER_SECONDS, iLightDelayAfterSeconds); 
