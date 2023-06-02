@@ -36,7 +36,7 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 // EEPROM.read(address);
 
 // EEPROM state variables
-#define EEPROM_SIZE 40
+#define EEPROM_SIZE 41
 #define EEPROM_SIGNATURE                    0 // 000-003  Signature 'KISS'
 #define EEPROM_NUMBER_OF_LOOPS              4 // 004-005  iNumberOfLoops
 #define EEPROM_TIME_DELAY_SECONDS           6 // 006-007  iTimeDelaySeconds
@@ -44,7 +44,8 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define EEPROM_LIGHT_DELAY_BEFORE_SECONDS  10 // 010-011  iLightDelayBeforeSeconds
 #define EEPROM_LIGHT_DELAY_AFTER_SECONDS   12 // 012-013  iLightDelayAfterSeconds
 #define EEPROM_CAMERA_ID                   14 // 014-015  cCameraID
-#define EEPROM_ACTIVE_HOURS                16 // 016-040  bActiveHours
+#define EEPROM_ACTIVE_HOURS                16 // 016-039  bActiveHours
+#define EEPROM_CONTINUOUS_MODE             40 // 040-040  bContinuousMode
 
 #define LIGHT_CONTROL_PIN 4
 
@@ -109,6 +110,10 @@ static int iStatusUpdateState = STATUSUPDATE_INITIAL;
 #define PHOTO_TIMELAPSE 1
 #define VIDEO_TIMELAPSE 2
 
+#define NO_CONTINUOUS_MODE    0
+#define PHOTO_CONTINUOUS_MODE 1
+#define VIDEO_CONTINUOUS_MODE 2
+
 static int iTimeLapse = NO_TIMELAPSE;
 static bool bTimeLapseFinished = false;
 
@@ -125,6 +130,10 @@ static byte bActiveHours[24] = {1, 1, 1, 1, 1, 1,
                                 1, 1, 1, 1, 1, 1,
                                 1, 1, 1, 1, 1, 1
                                };
+
+static byte bContinuousMode = NO_CONTINUOUS_MODE;       
+
+static byte bFirstLoop = true;
 
 char sKeyboardName[] = "KISS 00 Time-Lapse BLE Kybd";
 //                      0123456
@@ -737,6 +746,7 @@ void setup()
     {
       bActiveHours[i] = EEPROM.read(EEPROM_ACTIVE_HOURS+i);
     }
+    bContinuousMode = EEPROM.read(EEPROM_CONTINUOUS_MODE);
   }
   else
   {
@@ -810,6 +820,32 @@ Serial.println(cCameraID);
 
 void loop()
 {
+  if (bFirstLoop)
+  {
+    bFirstLoop = false;
+    if (bContinuousMode == PHOTO_CONTINUOUS_MODE)
+    {
+      TakePhotoWithLightControl(true);
+      //if (iNumberOfLoops > 1)          
+      {
+        iTimeLapse = PHOTO_TIMELAPSE;
+        lTimeMillisecondsPhoto = millis();
+        iLoopCounter = 1;
+      }      
+    }
+    else
+    if (bContinuousMode == VIDEO_CONTINUOUS_MODE)
+    {
+      StartVideoWithLightControl();
+      //if (iNumberOfLoops > 1)          
+      {
+        iTimeLapse = VIDEO_TIMELAPSE;
+        lTimeMillisecondsPhoto = millis();
+        iLoopCounter = 1;
+      }      
+    }
+  }
+  
   if (iTimeLapse != NO_TIMELAPSE)
   {
     if (bRecordingVideo)
@@ -883,6 +919,12 @@ Serial.println("OP_STOPVIDEO");
 #if DEBUG_OUTPUT
 Serial.println("OP_STARTPHOTOTIMELAPSE");
 #endif
+        if (iNumberOfLoops == 0)
+        {
+          bContinuousMode = PHOTO_CONTINUOUS_MODE;
+          SetupEEPROM();
+        }
+        
         TakePhotoWithLightControl(true);
         //if (iNumberOfLoops > 1)          
         {
@@ -896,6 +938,13 @@ Serial.println("OP_STARTPHOTOTIMELAPSE");
 #if DEBUG_OUTPUT
 Serial.println("OP_STARTVIDEOTIMELAPSE");
 #endif
+
+        if (iNumberOfLoops == 0)
+        {
+          bContinuousMode = VIDEO_CONTINUOUS_MODE;
+          SetupEEPROM();
+        }
+
         StartVideoWithLightControl();
         //if (iNumberOfLoops > 1)          
         {
@@ -918,6 +967,9 @@ Serial.println("OP_STOPTIMELAPSE");
         iTimeLapse = NO_TIMELAPSE;
         bTimeLapseFinished = false;
         iStatusUpdateState = STATUSUPDATE_INITIAL;
+        
+        bContinuousMode = NO_TIMELAPSE;
+        SetupEEPROM();
         break;
 
       case OP_SETTINGS:
@@ -1077,6 +1129,7 @@ void SetupEEPROM()
   {
     EEPROM.write(EEPROM_ACTIVE_HOURS+i, bActiveHours[i]);
   }
+  EEPROM.write(EEPROM_CONTINUOUS_MODE, bContinuousMode);
   EEPROM.commit();    
 
 #if DEBUG_OUTPUT
