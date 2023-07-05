@@ -19,7 +19,7 @@
  **************************************************************************/
 
 #define PROGRAM "KISS Time-Lapse Camera Controller"
-#define VERSION "Ver 0.9 2023-05-26"
+#define VERSION "Ver 0.9 2023-06-05"
 
 #define DEBUG_OUTPUT  1
 
