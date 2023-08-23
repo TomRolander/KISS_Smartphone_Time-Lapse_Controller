@@ -19,7 +19,7 @@
  **************************************************************************/
 
 #define PROGRAM "KISS Time-Lapse Camera Controller"
-#define VERSION "Ver 0.9 2023-06-05"
+#define VERSION "Ver 0.9 2023-07-24"
 
 #define DEBUG_OUTPUT  1
 
@@ -82,6 +82,8 @@ static int iOpOut = 0;
 static int iOpCount = 0;
 
 #include <WiFi.h>
+
+#define WIFI_TIMEOUT  10000
 
 #include <ESPAsyncWebServer.h>
 
@@ -780,7 +782,7 @@ Serial.println(cCameraID);
   Serial.println(WiFi.macAddress());  
   Serial.println("\n[*] Creating ESP32 AP");
 #endif
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_AP_STA);  
 
   soft_ap_ssid[5] = cCameraID[0];
   soft_ap_ssid[6] = cCameraID[1];
@@ -792,17 +794,32 @@ Serial.println(cCameraID);
   WiFi.begin(wifi_network_ssid, wifi_network_password);
   Serial.println("\n[*] Connecting to WiFi Network");
 
+  int iTimeoutCounter = 0;
   while(WiFi.status() != WL_CONNECTED)
   {
       Serial.print(".");
       delay(100);
+      iTimeoutCounter += 100;
+      if (iTimeoutCounter > WIFI_TIMEOUT)
+      {
+        bUseNTP = false;
+        break;
+      }
   }
 
-  Serial.print("\n[+] Connected to the WiFi network with local IP : ");
-  Serial.println(WiFi.localIP());
-
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  printLocalTime();
+  if (bUseNTP)
+  {
+    Serial.print("\n[+] Connected to the WiFi network with local IP : ");
+    Serial.println(WiFi.localIP());
+  
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    printLocalTime();
+  }
+  else
+  {
+    Serial.println("Failed Connection to the WiFi!");
+    Serial.println("NTP access suppressed and Active Hours ignored");
+  }
 
   KISS_HTTP_Handler();
     
@@ -1039,6 +1056,7 @@ void TakePhotoWithLightControl(bool bCheckActiveHours)
   if (bCheckActiveHours)
   {
 //////////////////
+#if 0
 Serial.print("bUseNTP=");
 Serial.println(bUseNTP);
 Serial.print("getLocalTime(&timeinfo)=");
@@ -1047,6 +1065,7 @@ Serial.print("timeinfo.tm_hour=");
 Serial.println(timeinfo.tm_hour);        
 Serial.print("bActiveHours[timeinfo.tm_hour]=");
 Serial.println(bActiveHours[timeinfo.tm_hour]);
+#endif
         if (bUseNTP == true &&
             getLocalTime(&timeinfo) == true &&
             bActiveHours[timeinfo.tm_hour] == false)
