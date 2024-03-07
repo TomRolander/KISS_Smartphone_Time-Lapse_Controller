@@ -48,6 +48,7 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define EEPROM_CONTINUOUS_MODE             40 // 040-040  bContinuousMode
 
 #define LIGHT_CONTROL_PIN 4
+//#define LIGHT_CONTROL_PIN 5
 
 #define NUMBER_OF_LOOPS             2
 #define TIME_DELAY_SECONDS          60
@@ -90,7 +91,7 @@ const char* wifi_network_password =  "";
 
 char soft_ap_ssid[]               = "KISS 00 Time-Lapse Camera";
 //                                   0123456
-const char *soft_ap_password      = "KISS-HMS";
+const char *soft_ap_password      = ""; //KISS-HMS";
 
 // Set web server port number to 80
 AsyncWebServer server(80);
@@ -1036,6 +1037,7 @@ void printLocalTime()
 
 void TakePhotoWithLightControl(bool bCheckActiveHours)
 {
+  //Serial.println("TakePhotoWithLightControl");
   if (bCheckActiveHours)
   {
 //////////////////
