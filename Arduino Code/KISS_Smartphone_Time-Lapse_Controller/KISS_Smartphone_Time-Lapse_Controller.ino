@@ -1,5 +1,4 @@
 /**************************************************************************
-  Dual-Axis Smartphone Slider
   KISS Time-Lapse Camera Controller
 
   Original Code:  2022-11-01
@@ -19,12 +18,16 @@
  **************************************************************************/
 
 #define PROGRAM "KISS Time-Lapse Camera Controller"
-#define VERSION "Ver 0.9 2023-07-24"
+#define VERSION "Ver 0.9 2024-03-30"
 
 #define DEBUG_OUTPUT  1
 
 // NOTE: this define is required inside BleKeyboard.h to work on iPhones and Androids!
-//#define USE_NIMBLE
+// NOTE: update the following Arduino library
+//         ..\Documents\Arduino\libraries\ESP32_BLE_Keyboard\BleKeyboard.h
+//       uncomment the following line to use NimBLE library
+//       #define USE_NIMBLE
+#define USE_NIMBLE
 
 #include <BleKeyboard.h>    //https://github.com/T-vK/ESP32-BLE-Keyboard
 //BleKeyboard bleKeyboard("KISS 00 Time-Lapse BLE Kybd", "Hopkins Miller Fab Lab", 100);
@@ -92,7 +95,8 @@ const char* wifi_network_password =  "";
 
 char soft_ap_ssid[]               = "KISS 00 Time-Lapse Camera";
 //                                   0123456
-const char *soft_ap_password      = "KISS-HMS";
+//const char *soft_ap_password      = "KISS-HMS";
+const char *soft_ap_password      = "";
 
 // Set web server port number to 80
 AsyncWebServer server(80);
