@@ -1057,6 +1057,7 @@ void printLocalTime()
 
 void TakePhotoWithLightControl(bool bCheckActiveHours)
 {
+  //Serial.println("TakePhotoWithLightControl");
   if (bCheckActiveHours)
   {
 //////////////////
