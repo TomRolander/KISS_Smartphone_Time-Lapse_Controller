@@ -457,6 +457,9 @@ void StatusUpdate()
 
 void KISS_HTTP_Handler()
 {
+#if DEBUG_OUTPUT
+Serial.println("KISS_HTTP_Handler");
+#endif
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     Format_index_html(true);
     request->send_P(200, "text/html", index_html);
@@ -843,6 +846,9 @@ void loop()
 {
   if (bFirstLoop)
   {
+#if DEBUG_OUTPUT
+Serial.println("FirstLoop");
+#endif
     bFirstLoop = false;
     if (bContinuousMode == PHOTO_CONTINUOUS_MODE)
     {
