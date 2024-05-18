@@ -18,7 +18,7 @@
  **************************************************************************/
 
 #define PROGRAM "KISS Time-Lapse Camera Controller"
-#define VERSION "Ver 0.9 2024-03-30"
+#define VERSION "Ver 0.9 2024-05-18"
 
 #define DEBUG_OUTPUT  1
 
@@ -69,6 +69,9 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define OP_CANCEL               8
 #define OP_REBOOT               9
 #define OP_STATUSUPDATE        10
+#define OP_LIGHTON             11
+#define OP_LIGHTOFF            12
+
 
 #define TIMEDELAYSECONDS        "TIMEDELAYSECONDS"
 #define NUMBEROFLOOPS           "NUMBEROFLOOPS"
@@ -168,9 +171,10 @@ const char index_html_preamble[] PROGMEM = R"rawliteral(
 <head><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 <style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}
-.button { background-color: #4CAF50; border: none; color: white; padding: 8px 20px;
-text-decoration: none; font-size: 20px; margin: 2px; cursor: pointer;}
-.button2 {background-color: #555555;}</style>)rawliteral";
+.button { background-color: #4CAF50; border: none; color: white; padding: 4px 10px;
+text-decoration: none; font-size: 16px; margin: 2px; cursor: pointer;}
+.button2 {background-color: #555555;}
+h1 {font-size: 20px;}</style>)rawliteral";
 
 const char index_html_postamble[] PROGMEM = R"rawliteral(
 <p><a href="/PHOTO"><button class="button button2">TAKE PHOTO</button></a></p>
@@ -178,6 +182,7 @@ const char index_html_postamble[] PROGMEM = R"rawliteral(
 <p><a href="/STATUSUPDATEPHOTOTIMELAPSE"><button class="button button2">PHOTO TIME LAPSE</button></a></p>
 <p><a href="/STATUSUPDATEVIDEOTIMELAPSE"><button class="button button2">VIDEO TIME LAPSE</button></a></p>
 <p><a href="/SETTINGS"><button class="button button2">SETTINGS</button></a></p>
+<p>LIGHT <a href="/LIGHTON"><button class="button button2">ON</button></a> <a href="/LIGHTOFF"><button class="button button2">OFF</button></a></p>
 </body></html>)rawliteral";
 
 const char index_html_video[] PROGMEM = R"rawliteral(
@@ -601,6 +606,26 @@ Serial.println("SETTINGS");
     SendOpToLoop(request, OP_SETTINGS, (char *) index_html);
   });
  
+  server.on("/LIGHTON", HTTP_GET, [] (AsyncWebServerRequest *request)
+  {
+#if DEBUG_OUTPUT
+Serial.println("LIGHTON");
+#endif
+    iStatusUpdateState = STATUSUPDATE_INITIAL;
+    Format_index_html(false);
+    SendOpToLoop(request, OP_LIGHTON, (char *) index_html);
+  }); 
+ 
+  server.on("/LIGHTOFF", HTTP_GET, [] (AsyncWebServerRequest *request)
+  {
+#if DEBUG_OUTPUT
+Serial.println("LIGHTOFF");
+#endif
+    iStatusUpdateState = STATUSUPDATE_INITIAL;
+    Format_index_html(false);
+    SendOpToLoop(request, OP_LIGHTOFF, (char *) index_html);
+  }); 
+ 
   server.on("/CANCEL", HTTP_GET, [] (AsyncWebServerRequest *request)
   {
 #if DEBUG_OUTPUT
@@ -1003,6 +1028,20 @@ Serial.println("OP_STOPTIMELAPSE");
 #if DEBUG_OUTPUT
 Serial.println("OP_SETTINGS");
 #endif
+        break;
+
+      case OP_LIGHTON:
+#if DEBUG_OUTPUT
+Serial.println("OP_LIGHTON");
+#endif
+        digitalWrite(LIGHT_CONTROL_PIN, HIGH);
+        break;
+
+      case OP_LIGHTOFF:
+#if DEBUG_OUTPUT
+Serial.println("OP_LIGHTOFF");
+#endif
+        digitalWrite(LIGHT_CONTROL_PIN, LOW);
         break;
 
       case OP_CANCEL:
