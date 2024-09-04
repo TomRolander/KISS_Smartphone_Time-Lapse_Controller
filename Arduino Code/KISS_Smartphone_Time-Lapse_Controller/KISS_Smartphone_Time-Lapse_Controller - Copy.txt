@@ -1,4 +1,5 @@
 /**************************************************************************
+  Dual-Axis Smartphone Slider
   KISS Time-Lapse Camera Controller
 
   Original Code:  2022-11-01
@@ -18,16 +19,12 @@
  **************************************************************************/
 
 #define PROGRAM "KISS Time-Lapse Camera Controller"
-#define VERSION "Ver 0.9 2024-09-04"
+#define VERSION "Ver 0.9 2023-07-24"
 
 #define DEBUG_OUTPUT  1
 
 // NOTE: this define is required inside BleKeyboard.h to work on iPhones and Androids!
-// NOTE: update the following Arduino library
-//         ..\Documents\Arduino\libraries\ESP32_BLE_Keyboard\BleKeyboard.h
-//       uncomment the following line to use NimBLE library
-//       #define USE_NIMBLE
-#define USE_NIMBLE
+//#define USE_NIMBLE
 
 #include <BleKeyboard.h>    //https://github.com/T-vK/ESP32-BLE-Keyboard
 //BleKeyboard bleKeyboard("KISS 00 Time-Lapse BLE Kybd", "Hopkins Miller Fab Lab", 100);
@@ -51,6 +48,7 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define EEPROM_CONTINUOUS_MODE             40 // 040-040  bContinuousMode
 
 #define LIGHT_CONTROL_PIN 4
+//#define LIGHT_CONTROL_PIN 5
 
 #define NUMBER_OF_LOOPS             2
 #define TIME_DELAY_SECONDS          60
@@ -69,9 +67,6 @@ BleKeyboard bleKeyboard("", "Hopkins Miller Fab Lab", 100);
 #define OP_CANCEL               8
 #define OP_REBOOT               9
 #define OP_STATUSUPDATE        10
-#define OP_LIGHTON             11
-#define OP_LIGHTOFF            12
-
 
 #define TIMEDELAYSECONDS        "TIMEDELAYSECONDS"
 #define NUMBEROFLOOPS           "NUMBEROFLOOPS"
@@ -98,8 +93,7 @@ const char* wifi_network_password =  "";
 
 char soft_ap_ssid[]               = "KISS 00 Time-Lapse Camera";
 //                                   0123456
-//const char *soft_ap_password      = "KISS-HMS";
-const char *soft_ap_password      = "";
+const char *soft_ap_password      = ""; //KISS-HMS";
 
 // Set web server port number to 80
 AsyncWebServer server(80);
@@ -171,10 +165,9 @@ const char index_html_preamble[] PROGMEM = R"rawliteral(
 <head><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 <style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}
-.button { background-color: #4CAF50; border: none; color: white; padding: 4px 10px;
-text-decoration: none; font-size: 16px; margin: 2px; cursor: pointer;}
-.button2 {background-color: #555555;}
-h1 {font-size: 20px;}</style>)rawliteral";
+.button { background-color: #4CAF50; border: none; color: white; padding: 8px 20px;
+text-decoration: none; font-size: 20px; margin: 2px; cursor: pointer;}
+.button2 {background-color: #555555;}</style>)rawliteral";
 
 const char index_html_postamble[] PROGMEM = R"rawliteral(
 <p><a href="/PHOTO"><button class="button button2">TAKE PHOTO</button></a></p>
@@ -182,7 +175,6 @@ const char index_html_postamble[] PROGMEM = R"rawliteral(
 <p><a href="/STATUSUPDATEPHOTOTIMELAPSE"><button class="button button2">PHOTO TIME LAPSE</button></a></p>
 <p><a href="/STATUSUPDATEVIDEOTIMELAPSE"><button class="button button2">VIDEO TIME LAPSE</button></a></p>
 <p><a href="/SETTINGS"><button class="button button2">SETTINGS</button></a></p>
-<p>LIGHT <a href="/LIGHTON"><button class="button button2">ON</button></a> <a href="/LIGHTOFF"><button class="button button2">OFF</button></a></p>
 </body></html>)rawliteral";
 
 const char index_html_video[] PROGMEM = R"rawliteral(
@@ -317,7 +309,7 @@ void doSettingsValue(char *sDescription, char *sID, int iCurrentValue)
   strcat(index_html, "<tr><td style=\"text-align: left;\"><label>");
   strcat(index_html, sDescription);
   strcat(index_html, "</label></td><td style=\"text-align: left;\"><input type=\"text\" id=\"");
-  strcat(index_html, sID);     
+  strcat(index_html, sID);
   strcat(index_html, "\"maxlength=\"4\" size=\"4\" name=\"");
   strcat(index_html, sID);
   strcat(index_html, "\" value=\"");
@@ -462,9 +454,6 @@ void StatusUpdate()
 
 void KISS_HTTP_Handler()
 {
-#if DEBUG_OUTPUT
-Serial.println("KISS_HTTP_Handler");
-#endif
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     Format_index_html(true);
     request->send_P(200, "text/html", index_html);
@@ -605,26 +594,6 @@ Serial.println("SETTINGS");
     strcat(index_html, index_html_settingsupdate);
     SendOpToLoop(request, OP_SETTINGS, (char *) index_html);
   });
- 
-  server.on("/LIGHTON", HTTP_GET, [] (AsyncWebServerRequest *request)
-  {
-#if DEBUG_OUTPUT
-Serial.println("LIGHTON");
-#endif
-    iStatusUpdateState = STATUSUPDATE_INITIAL;
-    Format_index_html(false);
-    SendOpToLoop(request, OP_LIGHTON, (char *) index_html);
-  }); 
- 
-  server.on("/LIGHTOFF", HTTP_GET, [] (AsyncWebServerRequest *request)
-  {
-#if DEBUG_OUTPUT
-Serial.println("LIGHTOFF");
-#endif
-    iStatusUpdateState = STATUSUPDATE_INITIAL;
-    Format_index_html(false);
-    SendOpToLoop(request, OP_LIGHTOFF, (char *) index_html);
-  }); 
  
   server.on("/CANCEL", HTTP_GET, [] (AsyncWebServerRequest *request)
   {
@@ -871,9 +840,6 @@ void loop()
 {
   if (bFirstLoop)
   {
-#if DEBUG_OUTPUT
-Serial.println("FirstLoop");
-#endif
     bFirstLoop = false;
     if (bContinuousMode == PHOTO_CONTINUOUS_MODE)
     {
@@ -1028,20 +994,6 @@ Serial.println("OP_STOPTIMELAPSE");
 #if DEBUG_OUTPUT
 Serial.println("OP_SETTINGS");
 #endif
-        break;
-
-      case OP_LIGHTON:
-#if DEBUG_OUTPUT
-Serial.println("OP_LIGHTON");
-#endif
-        digitalWrite(LIGHT_CONTROL_PIN, HIGH);
-        break;
-
-      case OP_LIGHTOFF:
-#if DEBUG_OUTPUT
-Serial.println("OP_LIGHTOFF");
-#endif
-        digitalWrite(LIGHT_CONTROL_PIN, LOW);
         break;
 
       case OP_CANCEL:
