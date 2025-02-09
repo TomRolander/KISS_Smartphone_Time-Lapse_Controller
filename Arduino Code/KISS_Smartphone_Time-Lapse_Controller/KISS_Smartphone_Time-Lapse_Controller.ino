@@ -13,7 +13,20 @@
   To Do:
 
   Notes: 
-    I switched to noInterrupts() and interrupts() around critical sections
+
+    Board Manager:
+    esp32 by Espressif Systems
+    2.0.17
+
+    Libraries:
+    Using library ESP32 BLE Keyboard at version 0.3.2 in folder: C:\Users\Tom Rolander\Documents\Arduino\libraries\ESP32_BLE_Keyboard
+    Using library NimBLE-Arduino at version 1.4.1 in folder: C:\Users\Tom Rolander\Documents\Arduino\libraries\NimBLE-Arduino
+    Using library EEPROM at version 2.0.0 in folder: C:\Users\Tom Rolander\AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.17\libraries\EEPROM
+    Using library WiFi at version 2.0.0 in folder: C:\Users\Tom Rolander\AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.17\libraries\WiFi
+    Using library ESPAsyncWebServer at version 3.1.0 in folder: C:\Users\Tom Rolander\Documents\Arduino\libraries\ESPAsyncWebServer
+    Using library FS at version 2.0.0 in folder: C:\Users\Tom Rolander\AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.17\libraries\FS
+    Using library AsyncTCP at version 1.1.4 in folder: C:\Users\Tom Rolander\Documents\Arduino\libraries\AsyncTCP 
+
 
  **************************************************************************/
 
