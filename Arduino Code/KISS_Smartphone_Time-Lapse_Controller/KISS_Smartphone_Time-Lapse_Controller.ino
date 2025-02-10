@@ -14,6 +14,14 @@
 
   Notes: 
 
+    Setup for Huge APP:
+      Tools -> Partition Scheme -> Huge APP
+
+    ESP32_BLE_Keyboard from GitHub
+      https://github.com/T-vK/ESP32-BLE-Keyboard
+          Download ESP32-BLE-Keyboard-master.zip
+          copy to arduino/libraries
+
     Board Manager:
     esp32 by Espressif Systems
     2.0.17
